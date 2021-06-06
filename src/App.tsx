@@ -1,32 +1,109 @@
 import "./styles.css";
 import { Body, Carrousel } from "./styles";
-import { useState } from "react";
+import {
+  useLayoutEffect,
+  useState,
+  useEffect,
+  useReducer,
+  Reducer
+} from "react";
 import { useSwipeable } from "react-swipeable";
+export type DirType = "Left" | "Right";
+export interface IFrameProps {
+  dir: DirType;
+  deltaX: number;
+  swiping: boolean;
+  framePositions: Array<number>;
+}
+function moveTo(dir: DirType, framePositions: Array<number>) {
+  if (dir === "Right") {
+    return framePositions.map((frame) => {
+      return frame - 1 < 0 ? framePositions.length - 1 : frame - 1;
+    });
+  } else {
+    return framePositions.map((frame) => {
+      return frame + 1 > framePositions.length - 1 ? 0 : frame + 1;
+    });
+  }
+}
+type Action =
+  | { type: "move"; direction: DirType }
+  | { type: "stopSwiping"; direction?: DirType }
+  | { type: "startSwiping"; deltaX: number; direction: DirType };
+type ReducerSwip = (state: IFrameProps, action: Action) => IFrameProps;
+const reducerSwip: ReducerSwip = (state, action) => {
+  switch (action.type) {
+    case "move":
+      return {
+        dir: action.direction,
+        deltaX: 0,
+        swiping: false,
+        framePositions: moveTo(action.direction, state.framePositions)
+      };
+    case "stopSwiping":
+      return {
+        ...state,
+        deltaX: 0,
+        swiping: false,
+        framePositions: moveTo(state.dir, state.framePositions)
+      };
+    case "startSwiping":
+      return {
+        ...state,
+        dir: action.direction,
+        deltaX: action.deltaX,
+        swiping: true
+      };
+  }
+};
 export default function App() {
-  const [framesPosition, setFramePosition] = useState([0, 1, 2, 3, 4, 5, 6, 7]);
-  function handleNextFrame() {
-    setFramePosition((frames) =>
-      frames.map((frame) => {
-        return frame - 1 < 0 ? framesPosition.length - 1 : frame - 1;
-      })
-    );
-  }
-  function handlePreviusFrame() {
-    setFramePosition((frames) =>
-      frames.map((frame) => {
-        return frame + 1 > framesPosition.length - 1 ? 0 : frame + 1;
-      })
-    );
-  }
+  const initialSwipProps: IFrameProps = {
+    dir: "Right",
+    deltaX: 0,
+    swiping: false,
+    framePositions: [0, 1, 2, 3, 4, 5, 6, 7]
+  };
+  const [swipProps, despatchSwipProps] = useReducer(
+    reducerSwip,
+    initialSwipProps
+  );
+
   const handlers = useSwipeable({
-    onSwipedLeft: () => handlePreviusFrame(),
-    onSwipedRight: () => handleNextFrame(),
+    delta: 1,
+    onSwiping: (e) => {
+      despatchSwipProps({
+        type: "startSwiping",
+        direction: e.dir === "Down" ? "Left" : e.dir === "Up" ? "Right" : e.dir,
+        deltaX: Math.round((-100 * e.deltaX) / window.innerWidth) / 100
+      });
+    },
+
     preventDefaultTouchmoveEvent: true,
     trackMouse: true
   });
+  useLayoutEffect(() => {
+    document.addEventListener(
+      "touchend",
+      () => {
+        despatchSwipProps({ type: "stopSwiping" });
+      },
+      false
+    );
+    document.addEventListener(
+      "mouseup",
+      (e: MouseEvent) => {
+        console.log(e);
+        despatchSwipProps({
+          type: "stopSwiping",
+          direction: e.x > window.innerWidth / 2 ? "Right" : "Left"
+        });
+      },
+      false
+    );
+  }, [handlers]);
   return (
     <Body {...handlers} className="App">
-      <Carrousel framesPosition={framesPosition}>
+      <Carrousel framesPosition={swipProps}>
         <main id="box0">
           <img
             src="https://i.pinimg.com/736x/9c/02/33/9c02334420c3767d6eec522c7e86d714.jpg"
@@ -77,8 +154,18 @@ export default function App() {
         </main>
       </Carrousel>
       <aside>
-        <button onClick={handlePreviusFrame}>prev</button>
-        <button onClick={handleNextFrame}>{framesPosition[0]}</button>
+        <button
+          onClick={() => despatchSwipProps({ type: "move", direction: "Left" })}
+        >
+          {swipProps.deltaX}
+        </button>
+        <button
+          onClick={() =>
+            despatchSwipProps({ type: "move", direction: "Right" })
+          }
+        >
+          Next
+        </button>
       </aside>
     </Body>
   );

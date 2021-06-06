@@ -1,4 +1,5 @@
 import styled, { css } from "styled-components";
+import { DirType, IFrameProps } from "./App";
 
 function createVarCss(arrayStyles: number[]) {
   let size = 96 * 1.6180339887;
@@ -38,36 +39,76 @@ export const Body = styled.div`
     position: absolute;
   }
 `;
-
-function createCss(arrayStyles: number[]) {
+function positionOnSwiping(pos: number, deltaX: number, posLength: number) {
+  if (deltaX === 0) {
+    return pos;
+  } else if (deltaX < 0) {
+    //indo para direita
+    return pos - 1 < 0 ? posLength - 1 : pos - 1;
+  } else {
+    //indo para esqueda
+    return pos + 1 > posLength - 1 ? 0 : pos + 1;
+  }
+}
+function createCss({ framePositions, dir, deltaX, swiping }: IFrameProps) {
   let styles = ``;
-  arrayStyles.forEach((position, index) => {
-    styles += `#box${index}{
-      top: var(--top${position});
-      right: var(--right${position});
-      width: calc(var(--box-size-${position}) - var(--gap));
-      height: calc(var(--box-size-${position}) - var(--gap));
-      z-index:${position === arrayStyles.length ? 0 : position};
-      opacity:calc(-1 * 0.${position} + 1);
-      transition:${
-        position + 1 === arrayStyles.length ||
-        position + 2 === arrayStyles.length
-          ? "0s"
-          : "0.5s"
-      };
-      
-    }`;
+  framePositions?.forEach((position, index) => {
+    if (swiping) {
+      styles += `#box${index}{
+        top: calc(var(--top${position}) + var(--top${positionOnSwiping(
+        position,
+        deltaX,
+        framePositions.length
+      )}) * ${deltaX === 0 ? 1 : deltaX});
+    right: calc( var(--right${position}) + var(--right${positionOnSwiping(
+        position,
+        deltaX,
+        framePositions.length
+      )}) * ${deltaX === 0 ? 1 : deltaX});
+    width: calc( var(--box-size-${position}) - var(--gap) - (var(--box-size-${positionOnSwiping(
+        position,
+        deltaX,
+        framePositions.length
+      )}) - var(--gap))* ${deltaX === 0 ? 1 : deltaX} );
+    height: calc( var(--box-size-${position}) - var(--gap) - (var(--box-size-${positionOnSwiping(
+        position,
+        deltaX,
+        framePositions.length
+      )}) - var(--gap))* ${deltaX === 0 ? 1 : deltaX} ); 
+        
+    z-index:${position === framePositions.length ? 0 : position};
+    opacity:${position * -0.16 + 1};
+    transition: 0s;
+    
+  }`;
+    } else {
+      styles += `#box${index}{
+        top: calc(var(--top${position}));
+        right: calc(var(--right${position}));
+        width: calc(var(--box-size-${position}) - var(--gap) );
+        height: calc(var(--box-size-${position}) - var(--gap) ); 
+        z-index:${position === framePositions.length ? 0 : position};
+        opacity:${position * -0.16 + 1};
+        transition:${
+          position + 1 === framePositions.length ||
+          position + 2 === framePositions.length
+            ? "0s"
+            : `0.5s`
+        };
+      }`;
+    }
   });
   return css`
     ${styles}
   `;
 }
 interface IPropsCarrousel {
-  framesPosition: number[];
+  framesPosition: IFrameProps;
 }
 export const Carrousel = styled.div<IPropsCarrousel>`
   ${(props) =>
-    props.framesPosition?.length > 0 && createVarCss(props.framesPosition)};
+    props.framesPosition?.framePositions.length > 0 &&
+    createVarCss(props.framesPosition?.framePositions)};
   --margin-top: 5%;
   --margin-right: -20%;
   --top0: var(--box-size-1);
@@ -117,8 +158,7 @@ export const Carrousel = styled.div<IPropsCarrousel>`
 
   --top7: calc(-1200%);
   --right7: calc(-1200%);
-  ${(props) =>
-    props.framesPosition?.length > 0 && createCss(props.framesPosition)};
+  ${(props) => props.framesPosition && createCss(props.framesPosition)};
   display: block;
   position: relative;
   width: 100%;
