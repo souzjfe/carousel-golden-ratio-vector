@@ -41,12 +41,14 @@ const reducerSwip: ReducerSwip = (state, action) => {
         framePositions: moveTo(action.direction, state.framePositions)
       };
     case "stopSwiping":
-      return {
-        ...state,
-        deltaX: 0,
-        swiping: false,
-        framePositions: moveTo(state.dir, state.framePositions)
-      };
+      return state.swiping
+        ? {
+            ...state,
+            deltaX: 0,
+            swiping: false,
+            framePositions: moveTo(state.dir, state.framePositions)
+          }
+        : state;
     case "startSwiping":
       return {
         ...state,
@@ -69,38 +71,31 @@ export default function App() {
   );
 
   const handlers = useSwipeable({
-    delta: 1,
     onSwiping: (e) => {
-      despatchSwipProps({
-        type: "startSwiping",
-        direction: e.dir === "Down" ? "Left" : e.dir === "Up" ? "Right" : e.dir,
-        deltaX: Math.round((-100 * e.deltaX) / window.innerWidth) / 100
-      });
-    },
-
-    preventDefaultTouchmoveEvent: true,
-    trackMouse: true
-  });
-  useLayoutEffect(() => {
-    document.addEventListener(
-      "touchend",
-      () => {
-        despatchSwipProps({ type: "stopSwiping" });
-      },
-      false
-    );
-    document.addEventListener(
-      "mouseup",
-      (e: MouseEvent) => {
-        console.log(e);
+      const deltaXtoProgress =
+        Math.round((-100 * e.deltaX) / window.innerWidth) / 100;
+      if (
+        deltaXtoProgress <= 1 &&
+        deltaXtoProgress >= -1 &&
+        e.dir !== "Down" &&
+        e.dir !== "Up"
+      ) {
         despatchSwipProps({
-          type: "stopSwiping",
-          direction: e.x > window.innerWidth / 2 ? "Right" : "Left"
+          type: "startSwiping",
+          direction: e.dir,
+          deltaX: deltaXtoProgress
         });
-      },
-      false
-    );
-  }, [handlers]);
+      }
+    },
+    onSwiped: (e) => {
+      despatchSwipProps({ type: "stopSwiping" });
+    },
+    trackTouch: true,
+    preventDefaultTouchmoveEvent: true,
+    trackMouse: true,
+    delta: 1
+  });
+
   return (
     <Body {...handlers} className="App">
       <Carrousel framesPosition={swipProps}>
