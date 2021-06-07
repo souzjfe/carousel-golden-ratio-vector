@@ -1,12 +1,6 @@
 import "./styles.css";
 import { Body, Carrousel } from "./styles";
-import {
-  useLayoutEffect,
-  useState,
-  useEffect,
-  useReducer,
-  Reducer
-} from "react";
+import { useReducer } from "react";
 import { useSwipeable } from "react-swipeable";
 export type DirType = "Left" | "Right";
 export interface IFrameProps {
@@ -46,7 +40,7 @@ const reducerSwip: ReducerSwip = (state, action) => {
             ...state,
             deltaX: 0,
             swiping: false,
-            framePositions: moveTo(state.dir, state.framePositions)
+            framePositions: moveTo(action.direction, state.framePositions)
           }
         : state;
     case "startSwiping":
@@ -73,7 +67,7 @@ export default function App() {
   const handlers = useSwipeable({
     onSwiping: (e) => {
       const deltaXtoProgress =
-        Math.round((-100 * e.deltaX) / window.innerWidth) / 100;
+        Math.round((-200 * e.deltaX) / window.innerWidth) / 100;
       if (
         deltaXtoProgress <= 1 &&
         deltaXtoProgress >= -1 &&
@@ -88,7 +82,9 @@ export default function App() {
       }
     },
     onSwiped: (e) => {
-      despatchSwipProps({ type: "stopSwiping" });
+      if (e.dir !== "Down" && e.dir !== "Up") {
+        despatchSwipProps({ type: "stopSwiping", direction: e.dir });
+      }
     },
     trackTouch: true,
     preventDefaultTouchmoveEvent: true,
